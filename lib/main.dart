@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 void main() => runApp(MyApp());
+
+const MethodSetCounter = "setCounter";
 
 class MyApp extends StatelessWidget {
   @override
@@ -11,6 +14,9 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
       ),
       home: MyHomePage(title: 'Flutter Demo Home Page'),
+      routes: {
+        "/external" : (context) =>  ExternalDisplay(),
+        },
     );
   }
 }
@@ -26,8 +32,10 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   int _counter = 0;
+  static const platform = const MethodChannel('io.github.oqu/externalA');
 
   void _incrementCounter() {
+    platform.invokeMethod(MethodSetCounter,[_counter + 1]);
     setState(() {
       _counter++;
     });
@@ -59,5 +67,52 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Icon(Icons.add),
       ), 
     );
+  }
+}
+
+
+class ExternalDisplay extends StatefulWidget {
+  @override
+  _ExternalDisplayState createState() => _ExternalDisplayState();
+}
+
+int getFirstInteger(dynamic args) {
+  if (args is! List<dynamic>) {
+    return null;
+  }
+  var ld = args as List<dynamic>;
+  if (ld.length > 0) {
+    if (ld[0] is int) {
+      return (ld[0] as int);
+    }
+  }
+  return null;
+}
+
+
+class _ExternalDisplayState extends State<ExternalDisplay> {
+  int counter = 0;
+  static const platform = const MethodChannel('io.github.oqu/externalB');
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    platform.setMethodCallHandler((message) async {
+      if (message.method == MethodSetCounter) {
+        var c = getFirstInteger(message.arguments);
+        if (c != null) {
+          setState(() {
+          counter = c;
+        });
+        }
+      }
+      return "ok";
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(child: Center(child: Text("External counter: $counter"),),),);
   }
 }
